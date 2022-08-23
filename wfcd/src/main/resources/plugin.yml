@@ -1,0 +1,11 @@
+main: com.mc.dungeon.WFC
+name: WFCD
+version: 0.1
+depend: [WorldEdit]
+api-version: 1.18
+
+commands:
+  wave:
+    description: Top command for the plugin.
+    usage: /wfc
+    aliases: [wfc]
