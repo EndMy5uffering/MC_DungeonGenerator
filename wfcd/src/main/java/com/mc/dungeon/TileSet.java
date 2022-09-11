@@ -1,5 +1,6 @@
 package com.mc.dungeon;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -54,6 +55,11 @@ public class TileSet {
 
     public static TileSet remove(String tilesetName){
         return TileSet.SetNameToTileSet.remove(tilesetName);
+    }
+
+    public Tile[] toArray(){
+        Collection<Tile> ks = this.tileList.values();
+        return ks.toArray(new Tile[ks.size()]);
     }
 
 }

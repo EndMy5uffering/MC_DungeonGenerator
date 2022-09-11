@@ -34,11 +34,11 @@ public class Tile {
     private boolean canBeRotated = true;
     private boolean canBeSpawned = true;
 
-    private List<List<Integer>> validNeighbours = new ArrayList<>();
+    public List<List<Integer>> validNeighbours = new ArrayList<>();
 
 
     public Tile(String[] socketsTop, String[] socketsMiddle, String[] socketsBottom, Clipboard prefab, String fileName, int rotation, int tileSize, boolean isNewTile, boolean existsAsSchematic) {
-        this.sockets = new String[][]{socketsTop, socketsBottom, socketsMiddle};
+        this.sockets = new String[][]{socketsTop, socketsMiddle, socketsBottom};
         this.prefab = prefab;
         this.rotation = rotation;
         this.tileSize = tileSize;
@@ -85,7 +85,7 @@ public class Tile {
         }
     }
 
-    public void spawn(Grid g) throws WorldEditException{
+    public EditSession spawn(Grid g, GridCell gc, EditSession session) throws WorldEditException{
 
         BlockVector3 offset;
 
@@ -106,17 +106,19 @@ public class Tile {
                 offset = BlockVector3.ZERO;
                 break;
         }
+        EditSession editSession = session;
+        if(session == null) editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(g.location.getWorld()));
 
-        EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(g.location.getWorld()));
         ClipboardHolder holder = new ClipboardHolder(this.prefab);
                 
         holder.setTransform(new AffineTransform().rotateY(90*rotation));
         Operation o = holder
         .createPaste(editSession)
         .to(BlockVector3
-        .at(g.location.getX() + offset.getX(), g.location.getY() + offset.getY(), g.location.getZ() + offset.getZ()))
+        .at(g.location.getX() + offset.getX() + (gc.x*gc.tileSize), g.location.getY() + offset.getY() + (gc.y*gc.tileSize), g.location.getZ() + offset.getZ() + (gc.z*gc.tileSize)))
         .build();
         Operations.complete(o);
+        return editSession;
     }
 
 

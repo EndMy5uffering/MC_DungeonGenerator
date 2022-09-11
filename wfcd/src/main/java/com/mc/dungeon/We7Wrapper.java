@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 import org.bukkit.entity.Player;
+import org.bukkit.util.BlockVector;
 
 import com.sk89q.worldedit.LocalSession;
 import com.sk89q.worldedit.WorldEditException;
@@ -22,6 +23,7 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardWriter;
 import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
 import com.sk89q.worldedit.function.operation.Operations;
+import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.util.io.Closer;
 
@@ -62,6 +64,12 @@ public class We7Wrapper {
         LocalSession session = wep.getSession(player);
         com.sk89q.worldedit.world.World SessionWorld = session.getSelectionWorld();
         Region selection = session.getSelection(SessionWorld);
+        selection.contract(BlockVector3.UNIT_X,
+                                        BlockVector3.UNIT_Y,
+                                        BlockVector3.UNIT_Z,
+                                        BlockVector3.UNIT_MINUS_X,
+                                        BlockVector3.UNIT_MINUS_Y,
+                                        BlockVector3.UNIT_MINUS_Z);
         BlockArrayClipboard clipboard = new BlockArrayClipboard(selection);
         ForwardExtentCopy copyRegion = new ForwardExtentCopy(SessionWorld, selection, clipboard, selection.getMinimumPoint());
         Operations.complete(copyRegion);

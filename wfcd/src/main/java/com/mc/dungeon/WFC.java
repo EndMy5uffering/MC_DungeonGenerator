@@ -17,6 +17,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mc.dungeon.commands.FrameGeneration;
+import com.mc.dungeon.commands.GridCommands;
 import com.mc.dungeon.commands.TileSetCommands;
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
@@ -44,6 +45,7 @@ public class WFC extends JavaPlugin
         worldEditPlugin = getWorldEdit();
         cmdManager.register(new FrameGeneration());
         cmdManager.register(new TileSetCommands());
+        cmdManager.register(new GridCommands());
         instance = this;
 
         cmdManager.suggestWildcardNames(true);
@@ -56,6 +58,10 @@ public class WFC extends JavaPlugin
             }else{
                 return List.of("<tilename>");
             }
+        });
+
+        WFC.getInstatic().cmdManager.registerTabLookup("/wave grid generate <tileset>", (args) -> {
+            return List.copyOf(TileSet.SetNameToTileSet.keySet());
         });
 
         loadTilesets();

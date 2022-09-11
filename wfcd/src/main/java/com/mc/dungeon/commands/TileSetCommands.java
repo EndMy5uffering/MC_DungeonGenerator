@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -28,8 +28,15 @@ import com.mc.dungeon.TileSet;
 import com.mc.dungeon.Util;
 import com.mc.dungeon.WFC;
 import com.mc.dungeon.We7Wrapper;
+import com.sk89q.worldedit.EditSession;
+import com.sk89q.worldedit.WorldEdit;
+import com.sk89q.worldedit.WorldEditException;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
+import com.sk89q.worldedit.function.operation.Operation;
+import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.session.ClipboardHolder;
 
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -121,8 +128,8 @@ public class TileSetCommands implements CMDListener {
     public boolean addTileToTileset(CMDArgs args) {
         if(args.getSender() instanceof Player player){
 
-            if(TileSet.has(args.getWildCard("tileset"))) {
-                player.sendMessage(ChatColor.RED + "You have to specify for what tileset the tile should be saved!");
+            if(!TileSet.has(args.getWildCard("tileset"))) {
+                player.sendMessage(ChatColor.RED + "The tileset " + args.getWildCard("tileset") + " dose not exist!");
                 return true;
             }
 
@@ -135,13 +142,13 @@ public class TileSetCommands implements CMDListener {
                 World w = player.getLocation().getWorld();
                 Clipboard clip = We7Wrapper.copyCurrentSelection(WFC.worldEditPlugin, player);
                 BlockVector3 dim = clip.getDimensions();
-                BlockVector3 min = clip.getMinimumPoint();
+                BlockVector3 min = clip.getMinimumPoint().add(BlockVector3.at(-1, -1, -1));
                 int l = dim.getX();
                 if(l != dim.getY() || l != dim.getZ()) {
                     player.sendMessage(ChatColor.RED + "The selection has to be a cube!");
                     return true;
                 }
-                l -= 1; //The dimension is 1 to large
+                l += 1; //The dimension is 1 to large
                 String[] UpperRingSockets = new String[] { getSocketString(min.add(l-2, l, l-1), BlockVector3.UNIT_MINUS_X, w, l-3),
                                                                                    getSocketString(min.add(1, l, l-2), BlockVector3.UNIT_MINUS_Z, w, l-3),
                                                                                    getSocketString(min.add(2, l, 1), BlockVector3.UNIT_X, w, l-3),
@@ -186,6 +193,39 @@ public class TileSetCommands implements CMDListener {
         return true;
     }
 
+    @CMDCommand(cmd = "/wave tileset <tileset> spawn <tilename>")
+    public boolean spawnTile(CMDArgs args) throws WorldEditException{
+        if(args.getSender() instanceof Player player){
+            Location loc = player.getLocation();
+            TileSet tileSet = TileSet.get(args.getWildCard("tileset"));
+            if(tileSet == null) {
+                player.sendMessage(ChatColor.RED + "Tileset not found!");
+                return true;
+            }
+            Tile tile = tileSet.getTile(args.getWildCard("tilename"));
+            if(tile == null) {
+                player.sendMessage(ChatColor.RED + "Tile not found!");
+                return true;
+            }
+
+            EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(loc.getWorld()));
+            ClipboardHolder holder = new ClipboardHolder(tile.getPrefab());
+                    
+            Operation o = holder
+            .createPaste(editSession)
+            .to(BlockVector3
+            .at(loc.getX(), loc.getY(), loc.getZ()))
+            .build();
+            Operations.complete(o);
+            editSession.close();
+
+
+            player.sendMessage(ChatColor.GREEN + "Spawned");
+        }
+
+        return true;
+    }
+
     @CMDCommand(cmd = "/wave tileset list")
     public boolean listTileSets(CMDArgs args){
         if(args.getSender() instanceof Player player){
@@ -225,7 +265,8 @@ public class TileSetCommands implements CMDListener {
                 TextComponent t1 = CMDEventText.getInteractComponent(ChatColor.BLUE + " [Sockets] ", "/wave tileset " + tileset + " info " + tile.getName() + " sockets", Action.RUN_COMMAND);
                 TextComponent t2 = CMDEventText.getInteractComponent(ChatColor.LIGHT_PURPLE + " [Settings] ", "/wave tileset " + tileset + " info " + tile.getName() + " settings", Action.RUN_COMMAND);
                 TextComponent t3 = CMDEventText.getInteractComponent(ChatColor.RED + "[Delete]", "/wave tileset " + tileset + " info " + tile.getName() + " delete", Action.RUN_COMMAND);
-                CMDEventText.sendEventMessage(player, t0, t1, t2, t3);
+                TextComponent t4 = CMDEventText.getInteractComponent(ChatColor.DARK_AQUA + " [Spawn]", "/wave tileset " + tileset + " spawn " + tile.getName(), Action.RUN_COMMAND);
+                CMDEventText.sendEventMessage(player, t0, t1, t2, t3, t4);
             }
             args.getSender().sendMessage(ChatColor.GOLD + "-".repeat(topText.length()));
             
