@@ -1,12 +1,14 @@
 package com.mc.dungeon;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.logging.Level;
 
-import org.bukkit.Location;
-import org.bukkit.entity.Player;
+import org.bukkit.Bukkit;
 
-import com.sk89q.worldedit.WorldEditException;
+import com.google.common.collect.Sets;
 
 public class GridCell {
 
@@ -18,8 +20,6 @@ public class GridCell {
     public boolean collapsed;
     public int entropy;
     public int[] values;
-
-    public int _FRONT= 0, _LEFT = 1, _RIGHT = 2, _BACK = 3, _TOP = 4, _BOTTOM = 5;
 
     public GridCell(Grid grid, int x, int y, int z, float tileSize, Tile tile, int tileIdx, boolean collapsed, int init_entropy) {
         this.tile = tile;
@@ -50,24 +50,33 @@ public class GridCell {
         if(this.collapsed) return;
 
         List<GridCell> c = getNeighbours();
-        List<List<Integer>> neighbours = new ArrayList<>();
+        Set<Set<Integer>> neighbours = new HashSet<>();
         for(GridCell e : c){
             List<Integer> n = this.getValidNeighboursList(e);
-            if(n != null) neighbours.add(n);
-        }
+            if(n != null) {
+                neighbours.add(Sets.newHashSet(n));
+            }
 
+        }
 
         List<Integer> validTiles = new ArrayList<Integer>();
         for(int j = 0; j < grid.tiles.length; ++j){
             boolean jvalid = true;
-            for(int i = 0; i < neighbours.size(); ++i){
-                jvalid &= neighbours.get(i).contains(j);
+            for(Set<Integer> s : neighbours){
+                jvalid &= s.contains(j);
             }
             if(jvalid) validTiles.add(j);
         }
 
         this.values = validTiles.stream().mapToInt(Integer::intValue).toArray();
         this.entropy = validTiles.size();
+
+        /*if(!this.collapsed){
+            Bukkit.getLogger().log(Level.INFO, "##############################################");
+            Bukkit.getLogger().log(Level.INFO, "TILES: \n" + String.join("\n", List.of(grid.tiles).stream().map(x -> x.toString()).toList()));
+            Bukkit.getLogger().log(Level.INFO, "-------------------\n Values: " + String.join(",", validTiles.stream().map(x -> x+"").toList()));
+            Bukkit.getLogger().log(Level.INFO, "-------------------\n NList: [" + neighbours.stream().map(x -> "[" + x.stream().map(y -> y+"").reduce("", (s, e) -> s+", "+e) + "]").reduce("", (s,e) -> s + ", " + e)  + "]");
+        }*/
 
     }
 
@@ -83,12 +92,12 @@ public class GridCell {
     }
 
     public List<Integer> getValidNeighboursList(GridCell Other){
-        if(Other.collapsed && Other.x > this.x) return Other.tile.validNeighbours.get(_LEFT);
-        if(Other.collapsed && Other.x < this.x) return Other.tile.validNeighbours.get(_RIGHT);
-        if(Other.collapsed && Other.y > this.y) return Other.tile.validNeighbours.get(_BOTTOM);
-        if(Other.collapsed && Other.y < this.y) return Other.tile.validNeighbours.get(_TOP);
-        if(Other.collapsed && Other.z > this.z) return Other.tile.validNeighbours.get(_BACK);
-        if(Other.collapsed && Other.z < this.z) return Other.tile.validNeighbours.get(_FRONT);
+        if(Other.collapsed && Other.x > this.x) return Other.tile.validNeighbours.get(Tile.RIGHT);
+        if(Other.collapsed && Other.x < this.x) return Other.tile.validNeighbours.get(Tile.LEFT);
+        if(Other.collapsed && Other.y > this.y) return Other.tile.validNeighbours.get(Tile.BOTTOM);
+        if(Other.collapsed && Other.y < this.y) return Other.tile.validNeighbours.get(Tile.TOP);
+        if(Other.collapsed && Other.z > this.z) return Other.tile.validNeighbours.get(Tile.BACK);
+        if(Other.collapsed && Other.z < this.z) return Other.tile.validNeighbours.get(Tile.FRONT);
         return null;
     }
 

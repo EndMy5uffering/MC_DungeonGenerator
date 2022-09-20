@@ -5,9 +5,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Stack;
+import java.util.logging.Level;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+
+import com.easycommands.commands.CMDEventText;
+import com.mc.dungeon.commands.GridCommands;
+
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ClickEvent.Action;
 
 public class Grid {
     
@@ -46,6 +54,7 @@ public class Grid {
     public int width, height, depth;
     public int tileSize = 0;
     private boolean isDone = false;
+    private boolean interrupted = false;
 
     public Grid(Tile[] tiles, int width, int height, int depth, int tileSize){
         this.tiles = tiles;
@@ -61,15 +70,15 @@ public class Grid {
             String[][] socks = t.getSockets();
             for (int i = 0; i < 3; ++i) 
             {
-                socks[0] = rotateSubArray(socks[0]);//Top
-                socks[1] = rotateSubArray(socks[1]);//Mid
-                socks[2] = rotateSubArray(socks[2]);//Bot
-                tempTiles.add(new Tile(socks[0], socks[1], socks[2], t.getPrefab(), t.getName(), i+1, t.getTileSize(), false, false));
+                tempTiles.add(new Tile(rotateSubArray(socks[0], 6-i+1), rotateSubArray(socks[1], 6-i+1), rotateSubArray(socks[2], 6-i+1), t.getPrefab(), t.getName(), i+1, t.getTileSize(), false, false));
             }
         }
 
+        this.tiles = tempTiles.toArray(new Tile[0]);
+
         for(Tile t : this.tiles){
-            t.checkValidNeighbour(tiles);
+            Bukkit.getLogger().log(Level.INFO, t.toString());
+            t.checkValidNeighbour(this.tiles);
         }
 
         this.cells = new GridCell[width][height][depth];
@@ -86,14 +95,10 @@ public class Grid {
 
     }
 
-    private String[] rotateSubArray(String[] a) {
+    private String[] rotateSubArray(String[] a, int offset) {
         String[] result = new String[a.length];
-        int n = 0;
-        for(String s : a) result[n++] = s;
-        for(int i = result.length-1; i > 0; --i){
-            String temp = result[i];
-            result[i] = result[i-1];
-            result[i-1] = temp;
+        for(int i = 0; i < a.length; ++i){
+            result[(i+offset)%a.length] = a[i];
         }
         return result;
     }
@@ -134,7 +139,6 @@ public class Grid {
     }
 
     public Runnable getRunnable(Player player){
-        player.sendMessage("Generating runnable");
         return () -> {
             player.sendMessage("Starting generation of dungeron. This could take a bit.");
 
@@ -142,42 +146,45 @@ public class Grid {
 
             GridCell nextTry = null;
             List<Integer> toExclude = new ArrayList<Integer>();
-            while(!isDone()){
+            while(!isDone() && !interrupted){
                 WFCResult c = WFC(toExclude, nextTry);
                 GridCell p;
                 switch (c.reason) {
                     case WFC_OK:
                         stack.push(c.cell);
                         nextTry = null;
+                        toExclude = new ArrayList<Integer>();
+                        Bukkit.getLogger().log(Level.INFO, "OK: " + c.cell.tile.getName());
                         break;
                     case WFC_No_Fitting_Tile:
-                            p = stack.pop();
-                            p.Reset();
+                            if(stack.isEmpty()) break;
+                            if(!stack.isEmpty()) stack.pop().Reset();
                             recalcEntropyUncollapsed();
+                            Bukkit.getLogger().log(Level.INFO, "WFC_No_Fitting_Tile");
+
                             break;
+                    case WFC_Null_Entropy:
+                        if(stack.isEmpty()) break;
+                            Bukkit.getLogger().log(Level.INFO, "WFC_Null_Entropy");
                     case WFC_No_Cell_Found:
-                        p = stack.pop();
-                        if (nextTry != null && nextTry == p)
-                        {
-                            toExclude.add(p.tileIdx);
-                        }
-                        else 
-                        {
-                            toExclude = new ArrayList<Integer>();
-                            toExclude.add(p.tileIdx);
-                            nextTry = p;
-                        }
-                        p.Reset();
+                        if(stack.isEmpty()) break;
+                        if(!stack.isEmpty()) stack.pop().Reset();
+                        if(!stack.isEmpty()) stack.pop().Reset();
                         recalcEntropyUncollapsed();
+                        Bukkit.getLogger().log(Level.INFO, "WFC_No_Cell_Found");
                         break;
-                
                     default:
+                        Bukkit.getLogger().log(Level.INFO, "default " + c.reason);
+                        interrupted = true;
                         break;
                 }
             }
-            Grid.playerToGeneratedGrids.put(player, this);
-            player.sendMessage("Dungeon was generated!");
-
+            if(!interrupted){
+                Grid.playerToGeneratedGrids.put(player, this);
+                CMDEventText.sendEventMessage(player, CMDEventText.getTextComponent(ChatColor.GREEN + "Dungeon was generated: "), CMDEventText.getInteractComponent(ChatColor.GOLD + "[SPAWN]", "/wave grid spawn", Action.RUN_COMMAND));
+            }
+            player.sendMessage("Task was interruped");
+            GridCommands.playerToThreads.remove(player);
         };
     }
 
@@ -193,7 +200,7 @@ public class Grid {
         }
 
         if (pick == null || pick.collapsed || pick.entropy <= 0) {
-            return new WFCResult(Reason.WFC_No_Cell_Found, null);
+            return new WFCResult(Reason.WFC_No_Cell_Found, pick);
         }
         
         int[] pickableValues = pick.values;
@@ -237,6 +244,10 @@ public class Grid {
             }
         }
         return done;
+    }
+
+    public void cancel(){
+        this.interrupted = true;
     }
 
 }

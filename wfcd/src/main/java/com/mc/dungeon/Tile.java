@@ -2,6 +2,9 @@ package com.mc.dungeon;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+
+import org.bukkit.Bukkit;
 
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
@@ -16,12 +19,12 @@ import com.sk89q.worldedit.session.ClipboardHolder;
 
 public class Tile {
     
-    private static int FRONT= 0;
-    private static int RIGHT = 1;
-    private static int BACK = 2;
-    private static int LEFT = 3;
-    private static int TOP = 4;
-    private static int BOTTOM = 5;
+    protected static int FRONT= 0;
+    protected static int RIGHT = 1;
+    protected static int BACK = 2;
+    protected static int LEFT = 3;
+    protected static int TOP = 4;
+    protected static int BOTTOM = 5;
 
     private String[][] sockets; //[0][0-3] = TOP | [1][0-3] = MIDDLE | [2][0-3] = BOTTOM
     private Clipboard prefab;
@@ -52,6 +55,7 @@ public class Tile {
     }
 
     public void checkValidNeighbour(Tile[] tiles){
+        this.validNeighbours = new ArrayList<>();
         for(int i = 0; i < 6; ++i){
             this.validNeighbours.add(new ArrayList<>());
         }
@@ -70,23 +74,22 @@ public class Tile {
             this.sockets[2][3].equals(getReverse(tiles[i].sockets[2][3]))){
                 this.validNeighbours.get(BOTTOM).add(i);
             }
-            if(this.sockets[1][0].equals(getReverse(tiles[i].sockets[1][0]))){
+            if(this.sockets[1][0].equals(getReverse(tiles[i].sockets[1][2]))){
                 this.validNeighbours.get(FRONT).add(i);
             }
-            if(this.sockets[1][1].equals(getReverse(tiles[i].sockets[1][1]))){
+            if(this.sockets[1][1].equals(getReverse(tiles[i].sockets[1][3]))){
                 this.validNeighbours.get(RIGHT).add(i);
             }
-            if(this.sockets[1][2].equals(getReverse(tiles[i].sockets[1][2]))){
+            if(this.sockets[1][2].equals(getReverse(tiles[i].sockets[1][0]))){
                 this.validNeighbours.get(BACK).add(i);
             }
-            if(this.sockets[1][3].equals(getReverse(tiles[i].sockets[1][3]))){
+            if(this.sockets[1][3].equals(getReverse(tiles[i].sockets[1][1]))){
                 this.validNeighbours.get(LEFT).add(i);
             }
         }
     }
 
     public EditSession spawn(Grid g, GridCell gc, EditSession session) throws WorldEditException{
-
         BlockVector3 offset;
 
         switch (this.rotation) {
@@ -94,13 +97,13 @@ public class Tile {
                 offset = BlockVector3.ZERO;
                 break;
             case 1:
-                offset = BlockVector3.UNIT_X.multiply(this.tileSize);
+                offset = BlockVector3.UNIT_Z.multiply(this.tileSize).subtract(BlockVector3.UNIT_Z);
                 break;
             case 2:
-                offset = BlockVector3.UNIT_X.add(BlockVector3.UNIT_Z).multiply(this.tileSize);
+                offset = BlockVector3.UNIT_X.add(BlockVector3.UNIT_Z).multiply(this.tileSize).subtract(BlockVector3.UNIT_X.add(BlockVector3.UNIT_Z));
                 break;
             case 3:
-                offset = BlockVector3.UNIT_Z.multiply(this.tileSize);
+                offset = BlockVector3.UNIT_X.multiply(this.tileSize).subtract(BlockVector3.UNIT_X);
                 break;
             default:
                 offset = BlockVector3.ZERO;
@@ -172,6 +175,11 @@ public class Tile {
 
     public void canBeSpawned(boolean canSpawn){
         this.canBeSpawned = canSpawn;
+    }
+
+    @Override
+    public String toString(){
+        return "Tile: " + getName() + " Sockets: [\n{" + String.join(",", getSockets()[0]) + "},\n{" + String.join(",", getSockets()[1]) + "},\n{" + String.join(",", getSockets()[2]) + "}]\nRotation: " + this.rotation;
     }
 
 }

@@ -1,19 +1,27 @@
 package com.mc.dungeon.commands;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
+
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import com.easycommands.CMDListener;
 import com.easycommands.commands.CMDArgs;
 import com.easycommands.commands.CMDCommand;
+import com.easycommands.commands.CMDEventText;
 import com.mc.dungeon.Grid;
 import com.mc.dungeon.TileSet;
-import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEditException;
 
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ClickEvent.Action;
 
 public class GridCommands implements CMDListener{
     
+    public static Map<Player, Grid> playerToThreads = new HashMap<>();
+
     @CMDCommand(cmd = "wave grid generate <tileset> <width> <height> <depth>")
     public boolean generateGrid(CMDArgs args){
 
@@ -35,7 +43,15 @@ public class GridCommands implements CMDListener{
             }
             player.sendMessage("Has grid: " + (g != null));
             Thread t = new Thread(g.getRunnable(player));
-            t.start();
+            if(playerToThreads.get(player) == null){
+                playerToThreads.put(player, g);
+                t.start();
+                CMDEventText.sendEventMessage(player,
+                CMDEventText.getTextComponent("You can stop the task "),
+                CMDEventText.getInteractComponent(ChatColor.GOLD + "[HERE]", "/wave grid stop", Action.RUN_COMMAND));
+            }else{
+                player.sendMessage(ChatColor.RED + "There is allready a task running please wait until its done.");
+            }
         }
 
         return true;
@@ -70,6 +86,19 @@ public class GridCommands implements CMDListener{
 
         }
 
+        return true;
+    }
+
+    @CMDCommand(cmd = "/wave grid stop")
+    public boolean stopTaskForPlayer(CMDArgs args){
+        if(args.getSender() instanceof Player player){
+            if(playerToThreads.get(player) == null){
+                player.sendMessage(ChatColor.RED + "There is no task running!");
+                return true;
+            }
+            playerToThreads.get(player).cancel();
+            player.sendMessage(ChatColor.GREEN + "The task was canceld");
+        }
         return true;
     }
 
